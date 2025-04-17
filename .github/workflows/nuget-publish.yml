@@ -1,0 +1,67 @@
+name: Publish NuGet Package
+
+on:
+  push:
+    branches:
+      - main # Executa o pipeline ao fazer push na branch "main"
+  pull_request:
+    branches:
+      - main # Executa o pipeline em Pull Requests para a branch "main"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '9.0' # Altere para a versão do .NET usada no seu projeto
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Run Unit Tests
+      run: dotnet test --no-build --verbosity normal
+
+    - name: Build project
+      run: dotnet build --configuration Release
+
+    - name: Pack NuGet package
+      run: dotnet pack --configuration Release --output ./nupkg
+
+    - name: Determine version
+      id: versioning
+      run: |
+        # Incrementa automaticamente a versão com base no número de commits
+        VERSION="1.0.$(git rev-list --count HEAD)"
+        echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Publish to GitHub Packages
+      if: github.ref == 'refs/heads/main' # Publica apenas na branch "main"
+      run: dotnet nuget push ./nupkg/*.nupkg --source "github"
+      env:
+        NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job para testar localmente
+  local-test:
+    if: github.event_name == 'workflow_dispatch' # Executa apenas se for disparado manualmente
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '9.0'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Run Unit Tests
+      run: dotnet test --no-build --verbosity normal
