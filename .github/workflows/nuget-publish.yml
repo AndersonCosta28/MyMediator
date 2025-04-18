@@ -22,25 +22,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Cache .NET installation
-      uses: actions/cache@v4
-      id: dotnet-cache
-      with:
-        path: $HOME/.dotnet
-        key: dotnet-${{ runner.os }}-${{ github.ref }}-9.0
-        restore-keys: |
-          dotnet-${{ runner.os }}-${{ github.ref }}
-          dotnet-${{ runner.os }}
-
-    - name: Install .NET 9 (if not cached)
+    - name: Install .NET 9
       run: |
-        if [ ! -d "$HOME/.dotnet" ]; then
-          wget https://dotnet.microsoft.com/download/dotnet/scripts/v1/dotnet-install.sh --no-check-certificate
-          chmod +x dotnet-install.sh
-          ./dotnet-install.sh --channel 9.0 --install-dir $HOME/.dotnet
-        fi
-      env:
-        PATH: $HOME/.dotnet:$PATH
+        wget https://dotnet.microsoft.com/download/dotnet/scripts/v1/dotnet-install.sh --no-check-certificate
+        chmod +x dotnet-install.sh
+        ./dotnet-install.sh --channel 9.0 --install-dir $HOME/.dotnet
+        echo "$HOME/.dotnet" >> $GITHUB_PATH
 
     - name: Print .NET Info
       run: dotnet --info
