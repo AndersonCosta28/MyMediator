@@ -22,12 +22,25 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install .NET 9
+    - name: Cache .NET installation
+      uses: actions/cache@v4
+      id: dotnet-cache
+      with:
+        path: $HOME/.dotnet
+        key: dotnet-${{ runner.os }}-${{ github.ref }}-9.0
+        restore-keys: |
+          dotnet-${{ runner.os }}-${{ github.ref }}
+          dotnet-${{ runner.os }}
+
+    - name: Install .NET 9 (if not cached)
       run: |
-        wget https://dotnet.microsoft.com/download/dotnet/scripts/v1/dotnet-install.sh --no-check-certificate
-        chmod +x dotnet-install.sh
-        ./dotnet-install.sh --channel 9.0 --install-dir $HOME/.dotnet
-        echo "$HOME/.dotnet" >> $GITHUB_PATH
+        if [ ! -d "$HOME/.dotnet" ]; then
+          wget https://dotnet.microsoft.com/download/dotnet/scripts/v1/dotnet-install.sh --no-check-certificate
+          chmod +x dotnet-install.sh
+          ./dotnet-install.sh --channel 9.0 --install-dir $HOME/.dotnet
+        fi
+      env:
+        PATH: $HOME/.dotnet:$PATH
 
     - name: Print .NET Info
       run: dotnet --info
@@ -44,18 +57,9 @@ jobs:
     - name: Pack NuGet package
       run: dotnet pack --configuration Release --output ./nupkg
 
-    - name: Add NuGet source
-      run: |
-        dotnet nuget add source https://nuget.pkg.github.com/AndersonCosta28/index.json \
-          --name github \
-          --username ${{ github.actor }} \
-          --password ${{ secrets.GITHUB_TOKEN }}
-
     - name: Publish to GitHub Packages
       if: github.ref == 'refs/heads/main' # Publica apenas na branch "main"
-      run: dotnet nuget push ./nupkg/*.nupkg --source "github" --skip-duplicate
-      env:
-        NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet nuget push ./nupkg/*.nupkg --source "https://nuget.pkg.github.com/AndersonCosta28/index.json" --api-key ${{ secrets.GITHUB_TOKEN }}
 
     - name: Clean up artifacts
       if: always()
