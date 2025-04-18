@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main # Executa o pipeline em Pull Requests para a branch "main"
+
 env:
   DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1 # Define a variável de ambiente para o sistema de globalização do .NET
 
@@ -21,11 +22,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # - name: Setup .NET
-    #   uses: actions/setup-dotnet@v4
-    #   with:
-    #     dotnet-version: 9.0.x
-
     - name: Install .NET 9
       run: |
         wget https://dotnet.microsoft.com/download/dotnet/scripts/v1/dotnet-install.sh --no-check-certificate
@@ -36,33 +32,35 @@ jobs:
     - name: Print .NET Info
       run: dotnet --info
 
-    - name: Verify .NET version
-      run: dotnet --version
-
     - name: Restore dependencies
       run: dotnet restore
-
-    - name: Build project
-      run: dotnet build --configuration Release
 
     - name: Run Unit Tests
       run: dotnet test --verbosity detailed
 
+    - name: Build project
+      run: dotnet build --configuration Release
+
     - name: Pack NuGet package
       run: dotnet pack --configuration Release --output ./nupkg
 
-    - name: Determine version
-      id: versioning
+    - name: Add NuGet source
       run: |
-        # Incrementa automaticamente a versão com base no número de commits
-        VERSION="1.0.$(git rev-list --count HEAD)"
-        echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
+        dotnet nuget add source https://nuget.pkg.github.com/AndersonCosta28/index.json \
+          --name github \
+          --username ${{ github.actor }} \
+          --password ${{ secrets.GITHUB_TOKEN }}
 
     - name: Publish to GitHub Packages
       if: github.ref == 'refs/heads/main' # Publica apenas na branch "main"
-      run: dotnet nuget push ./nupkg/*.nupkg --source "github"
+      run: dotnet nuget push ./nupkg/*.nupkg --source "github" --skip-duplicate
       env:
         NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Clean up artifacts
+      if: always()
+      run: rm -rf ./nupkg
+
 
   # Job para testar localmente
   local-test:
