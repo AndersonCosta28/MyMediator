@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - name: Install dependencies
-      run: apt-get update && apt-get install -y --no-install-recommends curl wget ca-certificates
+      run: sudo apt-get update && sudo apt-get install -y curl wget ca-certificates
 
     - name: Checkout code
       uses: actions/checkout@v4
