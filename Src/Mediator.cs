@@ -1,8 +1,8 @@
-﻿using MyMediator.Interfaces;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace MyMediator;
 
-public class Mediator(IServiceProvider serviceProvider) : IMediator
+public class Mediator(IServiceProvider serviceProvider, IServiceScopeFactory serviceScopeFactory) : IMediator
 {
     public async Task SendAsync(IRequest request, CancellationToken cancellationToken)
     {

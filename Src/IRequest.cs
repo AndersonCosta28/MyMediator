@@ -1,4 +1,4 @@
-namespace MyMediator.Interfaces;
+namespace MyMediator;
 
 public interface IRequest { }
 

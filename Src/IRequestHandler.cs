@@ -1,4 +1,4 @@
-namespace MyMediator.Interfaces;
+namespace MyMediator;
 
 public interface IRequestHandler<in TRequest, TResult> where TRequest : IRequest<TResult>
 {

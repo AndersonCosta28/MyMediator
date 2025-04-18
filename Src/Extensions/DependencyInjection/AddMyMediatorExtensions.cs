@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using MyMediator.Interfaces;
 using System.Reflection;
 
 namespace MyMediator.Extensions.DependencyInjection;
@@ -27,7 +26,7 @@ public static class AddMyMediatorExtensions
             }
         }
 
-        services.AddSingleton<IMediator, Mediator>();
+        services.AddScoped<IMediator, Mediator>();
         return services;
     }
 
@@ -43,7 +42,7 @@ public static class AddMyMediatorExtensions
             services.AddTransient(interfaceType, handlerType);
         }
 
-        services.AddSingleton<IMediator, Mediator>();
+        services.AddScoped<IMediator, Mediator>();
         return services;
     }
 

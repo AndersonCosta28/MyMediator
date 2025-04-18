@@ -1,4 +1,4 @@
-﻿namespace MyMediator.Interfaces;
+﻿namespace MyMediator;
 public interface IRequestValidation<in TRequest>
     where TRequest : IRequest
 {

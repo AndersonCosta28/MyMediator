@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using MyMediator.Interfaces;
 using System.Reflection;
 
 namespace MyMediator.Extensions.DependencyInjection;

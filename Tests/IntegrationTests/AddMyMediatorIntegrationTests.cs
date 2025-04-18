@@ -1,8 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using MyMediator;
 using MyMediator.Extensions.DependencyInjection;
-using MyMediator.Interfaces;
-using Xunit;
 
 namespace IntegrationTests;
 
