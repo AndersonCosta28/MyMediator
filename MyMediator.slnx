@@ -1,9 +1,0 @@
-<Solution>
-  <Folder Name="/Src/" Id="02ea681e-c7d8-13c7-8484-4ac65e1b71e8">
-    <Project Path="Src/MyMediator.csproj" />
-  </Folder>
-  <Folder Name="/Tests/" Id="f69d844d-00ad-4573-9ab5-25efdf21571d">
-    <Project Path="Tests/IntegrationTests/IntegrationTests.csproj" />
-    <Project Path="UnitTests/UnitTests.csproj" Id="c85b161e-fc2b-40d6-bfa7-22ad82a32290" />
-  </Folder>
-</Solution>

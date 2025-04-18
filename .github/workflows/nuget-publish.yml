@@ -7,28 +7,46 @@ on:
   pull_request:
     branches:
       - main # Executa o pipeline em Pull Requests para a branch "main"
+env:
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1 # Define a variável de ambiente para o sistema de globalização do .NET
 
 jobs:
   publish:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install dependencies
+      run: apt-get update && apt-get install -y --no-install-recommends curl wget ca-certificates
+
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.x
+    # - name: Setup .NET
+    #   uses: actions/setup-dotnet@v4
+    #   with:
+    #     dotnet-version: 9.0.x
+
+    - name: Install .NET 9
+      run: |
+        wget https://dotnet.microsoft.com/download/dotnet/scripts/v1/dotnet-install.sh --no-check-certificate
+        chmod +x dotnet-install.sh
+        ./dotnet-install.sh --channel 9.0 --install-dir $HOME/.dotnet
+        echo "$HOME/.dotnet" >> $GITHUB_PATH
+
+    - name: Print .NET Info
+      run: dotnet --info
+
+    - name: Verify .NET version
+      run: dotnet --version
 
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Run Unit Tests
-      run: dotnet test --no-build --verbosity normal
-
     - name: Build project
       run: dotnet build --configuration Release
+
+    - name: Run Unit Tests
+      run: dotnet test --verbosity detailed
 
     - name: Pack NuGet package
       run: dotnet pack --configuration Release --output ./nupkg
