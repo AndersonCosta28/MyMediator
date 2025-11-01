@@ -2,6 +2,8 @@
 
 MyMediator is a lightweight implementation of the Mediator design pattern for .NET applications. It provides a simple and extensible way to decouple the communication between objects by using requests and handlers.
 
+Supported target: `.NET9`.
+
 ## Features
 
 - **Request/Response Pattern**: Supports sending requests and receiving responses.
@@ -26,6 +28,17 @@ var services = new ServiceCollection();
 services.AddMyMediator(typeof(Program).Assembly);
 ```
 
+For top-level statements / .NET9 (no `Program` class), you can use:
+
+```csharp
+using System.Reflection;
+using MyMediator.Extensions.DependencyInjection;
+
+builder.Services.AddMyMediator(Assembly.GetExecutingAssembly());
+```
+
+(Use `builder.Services.AddMyMediator(...)` when using the generic host in minimal hosting.)
+
 ### Creating a Request and Handler
 
 Define a request by implementing the `IRequest<TResponse>` interface:
@@ -33,7 +46,7 @@ Define a request by implementing the `IRequest<TResponse>` interface:
 ```csharp
 public class MyRequest : IRequest<string>
 {
-    public string Message { get; set; }
+ public string Message { get; set; }
 }
 ```
 
@@ -42,10 +55,10 @@ Create a handler by implementing the `IRequestHandler<TRequest, TResponse>` inte
 ```csharp
 public class MyRequestHandler : IRequestHandler<MyRequest, string>
 {
-    public Task<string> HandleAsync(MyRequest request, CancellationToken cancellationToken)
-    {
-        return Task.FromResult($"Handled: {request.Message}");
-    }
+ public Task<string> HandleAsync(MyRequest request, CancellationToken cancellationToken)
+ {
+ return Task.FromResult($"Handled: {request.Message}");
+ }
 }
 ```
 
@@ -59,6 +72,21 @@ var response = await mediator.SendAsync(new MyRequest { Message = "Hello, Mediat
 Console.WriteLine(response); // Output: Handled: Hello, Mediator!
 ```
 
+Minimal example using top-level statements (.NET9):
+
+```csharp
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using MyMediator.Extensions.DependencyInjection;
+
+var services = new ServiceCollection();
+services.AddMyMediator(Assembly.GetExecutingAssembly());
+var provider = services.BuildServiceProvider();
+var mediator = provider.GetRequiredService<IMediator>();
+var response = await mediator.SendAsync(new MyRequest { Message = "Hello from minimal app" });
+Console.WriteLine(response);
+```
+
 ## Testing
 
 ### Unit Tests
@@ -66,7 +94,7 @@ Console.WriteLine(response); // Output: Handled: Hello, Mediator!
 Unit tests are located in the `UnitTests` project. To run them, use:
 
 ```bash
-dotnet test UnitTests
+dotnet test ./Tests/UnitTests/UnitTests.csproj
 ```
 
 ### Integration Tests
@@ -74,8 +102,26 @@ dotnet test UnitTests
 Integration tests are located in the `IntegrationTests` project. To run them, use:
 
 ```bash
-dotnet test IntegrationTests
+dotnet test ./Tests/IntegrationTests/IntegrationTests.csproj
 ```
+
+## Packaging & Publishing
+
+This repository includes a GitHub Actions workflow that builds, packs and (optionally) publishes the package to GitHub Packages: `.github/workflows/nuget-publish.yml`.
+
+To create a local NuGet package:
+
+```bash
+dotnet pack --configuration Release --output ./nupkg
+```
+
+To push to a NuGet feed (example):
+
+```bash
+dotnet nuget push ./nupkg/*.nupkg --source <YOUR_FEED_URL> --api-key <API_KEY>
+```
+
+Note: the CI workflow targets `.NET9`. Ensure the corresponding SDK is installed locally or configured in CI.
 
 ## Contributing
 
