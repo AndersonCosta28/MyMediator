@@ -7,53 +7,58 @@ public static class AddMyMediatorExtensions
 {
     public static IServiceCollection AddMyMediator(this IServiceCollection services) => services.AddMyMediator(Assembly.GetExecutingAssembly());
 
-    public static IServiceCollection AddMyMediator(
-            this IServiceCollection services, params Assembly[] assemblies)
+    public static IServiceCollection AddMyMediator(this IServiceCollection services, params Assembly[] assemblies)
     {
-
         foreach (var assembly in assemblies)
-        {
-            var handlerTypes = assembly.GetTypes()
-                .Where(t => t.GetInterfaces().Any(isType))
+            AddAssembly(services, assembly);
+
+        services.AddScoped<IMediator, Mediator>();
+        return services;
+    }
+
+    public static IServiceCollection AddMyMediator(this IServiceCollection services, params IEnumerable<Type> handlerTypes)
+    {
+        AddHandlerTypes(services, handlerTypes);
+        services.AddScoped<IMediator, Mediator>();
+        return services;
+    }
+
+    private static void AddAssembly(IServiceCollection services, Assembly assembly)
+    {
+        var handlerTypes = assembly.GetTypes()
+                .Where(t => t.GetInterfaces().Any(IsHandlerType))
                 .ToList();
 
-            foreach (var handlerType in handlerTypes)
-            {
-                var interfaceType = handlerType.GetInterfaces()
-                    .First(isType);
-
-                services.AddTransient(interfaceType, handlerType);
-            }
-        }
-
-        services.AddScoped<IMediator, Mediator>();
-        return services;
+        AddHandlerTypes(services, handlerTypes);
     }
 
-    public static IServiceCollection AddMyMediator(
-    this IServiceCollection services, params IEnumerable<Type> handlerTypes)
+    private static void AddHandlerTypes(IServiceCollection services, params IEnumerable<Type> handlerTypes)
     {
+        var grouped = handlerTypes
+            .SelectMany(t => t.GetInterfaces()
+            .Where(IsHandlerType)
+            .Select(i => (Handler: t, Interface: i)))
+            .GroupBy(x => x.Interface);
 
-        foreach (var handlerType in handlerTypes)
+        foreach (var group in grouped)
         {
-            var interfaceType = handlerType.GetInterfaces()
-                .First(isType);
+            if (group.Count() > 1 && group.Key.GetGenericTypeDefinition() != typeof(INotificationHandler<>))
+                throw new InvalidOperationException($"Multiple handlers were found for request type {group.Key}. Only one IRequestHandler is allowed per request.");
 
-            services.AddTransient(interfaceType, handlerType);
+            foreach (var (handler, iface) in group)
+                services.AddTransient(iface, handler);
         }
-
-        services.AddScoped<IMediator, Mediator>();
-        return services;
     }
 
-    private static bool isType(Type type)
+    private static bool IsHandlerType(Type type)
     {
-        var isGenericType = type.IsGenericType;
-        if (!isGenericType) 
-            return false;   
-            
-        var isGenericTypeDefinition = type.GetGenericTypeDefinition() == typeof(IRequestHandler<,>) || type.GetGenericTypeDefinition() == typeof(IRequestHandler<>);
+        if (!type.IsGenericType)
+            return false;
 
-        return isGenericType && isGenericTypeDefinition;
+        var genericDef = type.GetGenericTypeDefinition();
+
+        return genericDef == typeof(IRequestHandler<,>)
+            || genericDef == typeof(IRequestHandler<>)
+            || genericDef == typeof(INotificationHandler<>);
     }
 }

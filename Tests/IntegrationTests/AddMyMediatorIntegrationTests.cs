@@ -45,10 +45,8 @@ public class AddMyMediatorIntegrationTests
 
     public class TestRequestHandler : IRequestHandler<TestRequest, string>
     {
-        public Task<string> HandleAsync(TestRequest request, CancellationToken cancellationToken)
-        {
-            return Task.FromResult("Handled");
-        }
+        public Task<string> HandleAsync(TestRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult("Handled");
     }
 
     // Classe de teste para simular uma requisição sem handler
