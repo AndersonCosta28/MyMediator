@@ -4,6 +4,17 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- Metadados NuGet migrados do .nuspec para o .csproj -->
+    <Version>1.0.0</Version>
+    <PackageId>MyMediator</PackageId>
+    <Authors>Anderson Costa</Authors>
+    <Owners>Anderson Costa</Owners>
+    <Description>A lightweight implementation of the Mediator design pattern for .NET applications.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/AndersonCosta28/MyMediator</PackageProjectUrl>
+    <PackageTags>mediator pattern .NET dependency-injection</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
