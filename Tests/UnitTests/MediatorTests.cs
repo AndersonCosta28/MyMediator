@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using MyMediator;
+using MyMediator.Extensions.DependencyInjection;
 
 namespace UnitTests;
 
@@ -68,8 +69,8 @@ public class MediatorTests
     {
         var services = new ServiceCollection();
         services.AddTransient<IRequestHandler<TestRequest, string>, TestRequestHandler>();
-        services.AddTransient<IPipelineBehavior<TestRequest, string>, Behavior1>();
-        services.AddTransient<IPipelineBehavior<TestRequest, string>, Behavior2>();
+        // register pipeline behaviors using the extension method to preserve order
+        services.AddPipelineBehaviors(typeof(Behavior1), typeof(Behavior2));
         var provider = services.BuildServiceProvider();
 
         var mediator = new Mediator(provider);
