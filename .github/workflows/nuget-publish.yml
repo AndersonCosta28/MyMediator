@@ -49,7 +49,7 @@ jobs:
 
     - name: Publish to GitHub Packages
       if: github.ref == 'refs/heads/main' # Publica apenas na branch "main"
-      run: dotnet nuget push ./nupkg/*.nupkg --source "https://nuget.pkg.github.com/AndersonCosta28/index.json" --api-key ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet nuget push ./nupkg/*.nupkg --source "https://api.nuget.org/v3/index.json" --api-key ${{ secrets.NUGET_TOKEN }}
 
     - name: Clean up artifacts
       if: always()
