@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace MyMediator;
+namespace Mert1s.MyMediator;
 
 public class Mediator(IServiceProvider serviceProvider) : IMediator
 {

@@ -1,7 +1,8 @@
+using Mert1s.MyMediator;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
-namespace MyMediator.Extensions.DependencyInjection;
+namespace Mert1s.MyMediator.Extensions.DependencyInjection;
 
 public static class AddMyMediatorExtensions
 {
@@ -71,19 +72,15 @@ public static class AddMyMediatorExtensions
 
             // If the handler is an open generic type (generic type definition), register as open-generic service
             if (handler.IsGenericTypeDefinition || handler.ContainsGenericParameters)
-            {
                 foreach (var iface in interfaces)
                 {
                     var serviceType = iface.IsGenericType ? iface.GetGenericTypeDefinition() : iface;
                     var implementationType = handler.IsGenericTypeDefinition ? handler : handler.GetGenericTypeDefinition();
                     services.AddTransient(serviceType, implementationType);
                 }
-            }
             else
-            {
                 foreach (var iface in interfaces)
                     services.AddTransient(iface, handler);
-            }
         }
     }
 

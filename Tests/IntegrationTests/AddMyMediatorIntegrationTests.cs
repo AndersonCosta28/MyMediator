@@ -1,6 +1,6 @@
+using Mert1s.MyMediator;
+using Mert1s.MyMediator.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
-using MyMediator;
-using MyMediator.Extensions.DependencyInjection;
 using Xunit;
 
 namespace IntegrationTests;

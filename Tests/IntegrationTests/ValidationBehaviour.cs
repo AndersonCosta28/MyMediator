@@ -1,5 +1,5 @@
-﻿using Mert1s.MyValidator;
-using MyMediator;
+﻿using Mert1s.MyMediator;
+using Mert1s.MyValidator;
 
 namespace IntegrationTests;
 public class ValidationBehavior<TRequest, TResponse>(IEnumerable<ValidatorBuilder<TRequest>> validators) : IPipelineBehavior<TRequest, TResponse>

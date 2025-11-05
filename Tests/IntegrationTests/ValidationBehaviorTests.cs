@@ -1,8 +1,8 @@
+using Mert1s.MyMediator;
+using Mert1s.MyMediator.Extensions.DependencyInjection;
 using Mert1s.MyValidator;
 using Mert1s.MyValidator.AspNetCore.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
-using MyMediator;
-using MyMediator.Extensions.DependencyInjection;
 using System.Reflection;
 
 namespace IntegrationTests;
