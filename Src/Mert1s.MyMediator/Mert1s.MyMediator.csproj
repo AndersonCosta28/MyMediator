@@ -7,7 +7,7 @@
 
     <!-- Metadados NuGet migrados do .nuspec para o .csproj -->
     <Version>1.0.1</Version>
-    <PackageId>MyMediator</PackageId>
+    <PackageId>Mert1s.MyMediator</PackageId>
     <Authors>Anderson Costa</Authors>
     <Owners>Anderson Costa</Owners>
     <Description>A lightweight implementation of the Mediator design pattern for .NET applications.</Description>
