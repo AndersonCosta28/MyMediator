@@ -1,26 +1,60 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Concurrent;
 
 namespace Mert1s.MyMediator;
 
-public class Mediator(IServiceProvider serviceProvider) : IMediator
+public class Mediator : IMediator
 {
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IHandlerInvokerCache _handlerInvokerCache;
+    private readonly ConcurrentDictionary<(Type RequestType, Type ResponseType), Type> _behaviorTypeCache;
+
+    public Mediator(IServiceProvider serviceProvider, MyMediatorOptions? options = null)
+    {
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+
+        // DI-first: prefer a registered IHandlerInvokerCache; fallback to default.
+        _handlerInvokerCache = serviceProvider.GetService<IHandlerInvokerCache>() ?? new DefaultHandlerInvokerConcurrentCache();
+        _behaviorTypeCache = options?.BehaviorTypeCacheFactory?.Invoke() ?? new ConcurrentDictionary<(Type, Type), Type>();
+    }
+
     public async Task SendAsync(IRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         var requestType = request.GetType();
-        var handlerType = typeof(IRequestHandler<>).MakeGenericType(requestType);
+        var responseType = typeof(object);
+        var handlerInterfaceType = typeof(IRequestHandler<>).MakeGenericType(requestType);
 
-        var handler = serviceProvider.GetService(handlerType) ??
-            throw new InvalidOperationException($"No handler found for type {requestType.Name}.");
-
-        // Monta pipeline para void (sem retorno)
-        var method = handlerType.GetMethod("HandleAsync");
-        var pipeline = this.BuildPipeline<object>(request, cancellationToken, async () =>
+        var lazyInvoker = _handlerInvokerCache.GetOrAdd((requestType, responseType), () => new Lazy<Func<object, CancellationToken, Task<object?>>>(() =>
         {
-            await (Task)method!.Invoke(handler, [request, cancellationToken])!;
-            return null!;
-        });
+            var hType = handlerInterfaceType;
+            var methodInfo = hType.GetMethod("HandleAsync")!;
+
+            return async (req, ct) =>
+            {
+                var handler = _serviceProvider.GetService(hType) ??
+                    throw new InvalidOperationException($"No handler found for type {requestType.Name}.");
+
+                var invocationResult = methodInfo.Invoke(handler, new object?[] { req, ct });
+
+                if (invocationResult is Task task)
+                {
+                    await task.ConfigureAwait(false);
+                    // If Task<TResult>, get Result via dynamic
+                    if (task.GetType().IsGenericType)
+                        return ((dynamic)task).Result;
+
+                    return null;
+                }
+
+                return invocationResult;
+            };
+        }, LazyThreadSafetyMode.ExecutionAndPublication));
+
+        var invoker = lazyInvoker.Value;
+
+        var pipeline = BuildPipeline<object>(request, () => invoker(request, cancellationToken), cancellationToken);
 
         await pipeline();
     }
@@ -30,27 +64,51 @@ public class Mediator(IServiceProvider serviceProvider) : IMediator
         ArgumentNullException.ThrowIfNull(request);
 
         var requestType = request.GetType();
-        var handlerType = typeof(IRequestHandler<,>).MakeGenericType(requestType, typeof(TResult));
+        var responseType = typeof(TResult);
+        var handlerInterfaceType = typeof(IRequestHandler<,>).MakeGenericType(requestType, typeof(TResult));
 
-        var handler = serviceProvider.GetService(handlerType) ??
-            throw new InvalidOperationException($"No handler found for type {requestType.Name}.");
+        var lazyInvoker = _handlerInvokerCache.GetOrAdd((requestType, responseType), () => new Lazy<Func<object, CancellationToken, Task<object?>>>(() =>
+        {
+            var hType = handlerInterfaceType;
+            var methodInfo = hType.GetMethod("HandleAsync")!;
 
-        // Monta pipeline para requests com retorno
-        var method = handlerType.GetMethod("HandleAsync");
-        var pipeline = this.BuildPipeline(request, cancellationToken, () => (Task<TResult>)method!.Invoke(handler, new object[] { request, cancellationToken })!);
+            return async (req, ct) =>
+            {
+                var handler = _serviceProvider.GetService(hType) ??
+                    throw new InvalidOperationException($"No handler found for type {requestType.Name}.");
 
-        return await pipeline();
+                var invocationResult = methodInfo.Invoke(handler, new object?[] { req, ct });
+
+                if (invocationResult is Task task)
+                {
+                    await task.ConfigureAwait(false);
+                    if (task.GetType().IsGenericType)
+                        return ((dynamic)task).Result;
+
+                    return null;
+                }
+
+                return invocationResult;
+            };
+        }, LazyThreadSafetyMode.ExecutionAndPublication));
+
+        var invoker = lazyInvoker.Value;
+
+        var result = await invoker(request, cancellationToken);
+        return (TResult)result!;
     }
 
     private Func<Task<TResponse>> BuildPipeline<TResponse>(
         object request,
-        CancellationToken cancellationToken,
-        Func<Task<TResponse>> handlerDelegate)
+        Func<Task<TResponse>> handlerDelegate,
+        CancellationToken cancellationToken)
     {
         var requestType = request.GetType();
-        var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, typeof(TResponse));
+        var responseType = typeof(TResponse);
 
-        var behaviors = serviceProvider.GetServices(behaviorType).Cast<dynamic>().ToList();
+        var behaviorType = _behaviorTypeCache.GetOrAdd((requestType, responseType), key => typeof(IPipelineBehavior<,>).MakeGenericType(key.RequestType, key.ResponseType));
+
+        var behaviors = _serviceProvider.GetServices(behaviorType).Cast<dynamic>().ToList();
 
         var pipeline = handlerDelegate;
 
@@ -71,7 +129,7 @@ public class Mediator(IServiceProvider serviceProvider) : IMediator
         var handlerType = typeof(INotificationHandler<>).MakeGenericType(notification.GetType());
 
         // Resolve todos os handlers registrados para esse evento
-        var handlers = serviceProvider.GetServices(handlerType);
+        var handlers = _serviceProvider.GetServices(handlerType);
 
         foreach (var handler in handlers)
         {

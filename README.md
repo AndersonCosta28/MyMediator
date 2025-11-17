@@ -2,7 +2,7 @@
 
 MyMediator is a lightweight implementation of the Mediator design pattern for .NET applications. It provides a simple and extensible way to decouple the communication between objects by using requests and handlers.
 
-Supported target: `.NET9`.
+Supported target: `.NET 9`.
 
 ## Features
 
@@ -13,124 +13,120 @@ Supported target: `.NET9`.
 
 ## Installation
 
-To use MyMediator in your project, clone this repository and add the `Src` folder to your solution. Alternatively, you can package it as a NuGet package and reference it in your projects.
+To use MyMediator in your project, add the `Src` folder to your solution or reference the project. The library targets .NET 9.
 
-## Usage
+## Quick registration examples
 
-### Registering MyMediator
+These examples show the recommended DI-first registration patterns and the available overloads of `AddMyMediator`.
 
-To register MyMediator in your application, use the provided extension method in your `Startup.cs` or `Program.cs`:
+1) Default (scan calling assembly)
 
 ```csharp
-using MyMediator.Extensions.DependencyInjection;
-
 var services = new ServiceCollection();
-services.AddMyMediator(typeof(Program).Assembly);
+services.AddMyMediator(); // scans calling assembly for handlers and registers IMediator
 ```
 
-For top-level statements / .NET9 (no `Program` class), you can use:
+2) Scan specific assemblies
 
 ```csharp
-using System.Reflection;
-using MyMediator.Extensions.DependencyInjection;
-
-builder.Services.AddMyMediator(Assembly.GetExecutingAssembly());
+services.AddMyMediator(Assembly.GetExecutingAssembly(), typeof(SomeTypeInOtherAssembly).Assembly);
 ```
 
-(Use `builder.Services.AddMyMediator(...)` when using the generic host in minimal hosting.)
-
-### Creating a Request and Handler
-
-Define a request by implementing the `IRequest<TResponse>` interface:
+3) Register specific handler `Type`s (manual discovery)
 
 ```csharp
-public class MyRequest : IRequest<string>
+services.AddMyMediator(new[] { typeof(MyHandler1), typeof(MyHandler2) });
+```
+
+4) Configure advanced options (behavior type cache)
+
+```csharp
+services.AddMyMediator(options =>
 {
- public string Message { get; set; }
-}
+    options.BehaviorTypeCacheFactory = () =>
+        new ConcurrentDictionary<(Type, Type), Type>();
+});
 ```
 
-Create a handler by implementing the `IRequestHandler<TRequest, TResponse>` interface:
+5) DI-first: register a custom `IHandlerInvokerCache` (recommended when using MemoryCache or bounded caches)
 
 ```csharp
-public class MyRequestHandler : IRequestHandler<MyRequest, string>
-{
- public Task<string> HandleAsync(MyRequest request, CancellationToken cancellationToken)
- {
- return Task.FromResult($"Handled: {request.Message}");
- }
-}
+services.AddMemoryCache(); // register IMemoryCache
+services.AddMyMediator(sp => new Mert1s.MyMediator.Caching.MemoryHandlerInvokerCache(sp.GetRequiredService<IMemoryCache>()));
+services.AddMyMediator(); // register mediator and scan handlers
 ```
 
-### Sending a Request
-
-Use the `IMediator` interface to send a request:
+6) Register a concrete `IHandlerInvokerCache` instance
 
 ```csharp
-var mediator = serviceProvider.GetRequiredService<IMediator>();
-var response = await mediator.SendAsync(new MyRequest { Message = "Hello, Mediator!" });
-Console.WriteLine(response); // Output: Handled: Hello, Mediator!
+var cache = new Mert1s.MyMediator.Caching.MemoryHandlerInvokerCache(new MemoryCache(new MemoryCacheOptions()));
+services.AddMyMediator(cache);
+services.AddMyMediator();
 ```
 
-Minimal example using top-level statements (.NET9):
+7) Register cache and scan assemblies in one call
 
 ```csharp
+services.AddMyMediator(sp => new Mert1s.MyMediator.Caching.MemoryHandlerInvokerCache(sp.GetRequiredService<IMemoryCache>()), Assembly.GetExecutingAssembly());
+```
+
+Notes
+- If you do not register an `IHandlerInvokerCache`, MyMediator falls back to an internal default implementation (`DefaultHandlerInvokerConcurrentCache`) which provides a simple ConcurrentDictionary-backed cache.
+- Prefer DI-first registration (`AddMyMediator(sp => ...)` or `AddMyMediator(cacheInstance)`) because it follows standard .NET conventions and allows integrating services from the same `IServiceCollection`.
+
+## Minimal end-to-end example
+
+This minimal example shows a full request/handler, registration using `MemoryHandlerInvokerCache` and sending a request.
+
+```csharp
+using System;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
-using MyMediator.Extensions.DependencyInjection;
+using Microsoft.Extensions.Caching.Memory;
+using Mert1s.MyMediator;
+using Mert1s.MyMediator.Caching;
 
+// Request + Handler
+public record HelloRequest(string Name) : IRequest<string>;
+public class HelloHandler : IRequestHandler<HelloRequest, string>
+{
+    public Task<string> HandleAsync(HelloRequest request, CancellationToken cancellationToken)
+        => Task.FromResult($"Hello, {request.Name}!");
+}
+
+// Program bootstrap
 var services = new ServiceCollection();
+services.AddMemoryCache();
+
+// Register Memory-backed handler-invoker cache (DI-first) and MyMediator
+services.AddMyMediator(sp => new MemoryHandlerInvokerCache(sp.GetRequiredService<IMemoryCache>()));
 services.AddMyMediator(Assembly.GetExecutingAssembly());
+
+// Register handler explicitly (or rely on assembly scanning)
+services.AddTransient<IRequestHandler<HelloRequest, string>, HelloHandler>();
+
 var provider = services.BuildServiceProvider();
 var mediator = provider.GetRequiredService<IMediator>();
-var response = await mediator.SendAsync(new MyRequest { Message = "Hello from minimal app" });
-Console.WriteLine(response);
+
+var result = await mediator.SendAsync(new HelloRequest("World"), CancellationToken.None);
+Console.WriteLine(result); // prints: Hello, World!
 ```
 
-## Testing
+## Samples and tests
 
-### Unit Tests
-
-Unit tests are located in the `UnitTests` project. To run them, use:
+- A minimal sample project is available under `Samples/MinimalApp` (shows registration snippets). You can run it with:
 
 ```bash
-dotnet test ./Tests/UnitTests/UnitTests.csproj
+cd Samples/MinimalApp
+dotnet run
 ```
 
-### Integration Tests
-
-Integration tests are located in the `IntegrationTests` project. To run them, use:
+- A simple test project demonstrating `MemoryHandlerInvokerCache` is available at `Samples/SimpleTests`. Run its tests with:
 
 ```bash
-dotnet test ./Tests/IntegrationTests/IntegrationTests.csproj
+dotnet test Samples/SimpleTests/SimpleTests.csproj
 ```
 
-## Packaging & Publishing
+## Contributing and packaging
 
-This repository includes a GitHub Actions workflow that builds, packs and (optionally) publishes the package to GitHub Packages: `.github/workflows/nuget-publish.yml`.
-
-To create a local NuGet package:
-
-```bash
-dotnet pack --configuration Release --output ./nupkg
-```
-
-To push to a NuGet feed (example):
-
-```bash
-dotnet nuget push ./nupkg/*.nupkg --source <YOUR_FEED_URL> --api-key <API_KEY>
-```
-
-Note: the CI workflow targets `.NET9`. Ensure the corresponding SDK is installed locally or configured in CI.
-
-## Contributing
-
-Contributions are welcome! Feel free to open issues or submit pull requests to improve this project.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-This project was inspired by the Mediator design pattern and aims to provide a simple and effective implementation for .NET developers.
+See the project README root for testing, packaging and CI details.
