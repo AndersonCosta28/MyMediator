@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Mert1s.MyMediator;
 
@@ -75,8 +75,8 @@ public class Mediator(IServiceProvider serviceProvider) : IMediator
 
         foreach (var handler in handlers)
         {
-            dynamic typedHandler = handler;
-            await typedHandler.HandleAsync((dynamic)notification, cancellationToken);
+            var method = handlerType.GetMethod("HandleAsync");
+            await (Task)method!.Invoke(handler, [notification, cancellationToken])!;
         }
     }
 }

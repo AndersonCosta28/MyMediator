@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
     <!-- Metadados NuGet migrados do .nuspec para o .csproj -->
-    <Version>1.0.1.1</Version>
+    <Version>1.0.1.2</Version>
     <PackageId>Mert1s.MyMediator</PackageId>
     <Authors>Anderson Costa</Authors>
     <Owners>Anderson Costa</Owners>
